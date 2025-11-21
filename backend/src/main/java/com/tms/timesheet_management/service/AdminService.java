@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.tms.timesheet_management.dto.DepartmentAdminDTO;
+import com.tms.timesheet_management.dto.DepartmentResponseDTO;
 import com.tms.timesheet_management.dto.UserAdminDTO;
 import com.tms.timesheet_management.dto.UserResponseDTO;
 import com.tms.timesheet_management.exception.BadRequestException;
@@ -187,7 +188,7 @@ public class AdminService {
     // DEPARTMENT MANAGEMENT
     // ========================
     @Transactional
-    public Department createDepartment(DepartmentAdminDTO dto) {
+    public DepartmentResponseDTO createDepartment(DepartmentAdminDTO dto) {
         if (departmentRepository.findByName(dto.getName()).isPresent()) {
             throw new BadRequestException("Department already exists");
         }
@@ -234,21 +235,24 @@ public class AdminService {
             saved = departmentRepository.save(saved);
         }
 
-        return saved;
+        return mapDepartmentToResponse(saved);
     }
 
-    public List<Department> getAllDepartments() {
-        return departmentRepository.findAll();
+    public List<DepartmentResponseDTO> getAllDepartments() {
+        return departmentRepository.findAll().stream()
+                .map(this::mapDepartmentToResponse)
+                .collect(Collectors.toList());
     }
 
-    public Department getDepartmentById(Long id) {
-    return departmentRepository.findById(id)
+    public DepartmentResponseDTO getDepartmentById(Long id) {
+    Department dept = departmentRepository.findById(id)
         .orElseThrow(() -> new NotFoundException("Department not found"));
+        return mapDepartmentToResponse(dept);
     }
 
     @Transactional
-    public Department updateDepartment(Long id, DepartmentAdminDTO dto) {
-        Department dept = getDepartmentById(id);
+    public DepartmentResponseDTO updateDepartment(Long id, DepartmentAdminDTO dto) {
+        Department dept = getDepartmentByIdRaw(id);
         if (dto.getName() != null) dept.setName(dto.getName());
         if (dto.getDescription() != null) dept.setDescription(dto.getDescription());
         Department saved = departmentRepository.save(dept);
@@ -298,7 +302,7 @@ public class AdminService {
             userRepository.save(previous);
         }
 
-        return saved;
+        return mapDepartmentToResponse(saved);
     }
 
     @Transactional
@@ -342,5 +346,24 @@ public class AdminService {
                 user.getDepartment() != null ? user.getDepartment().getId() : null,
                 user.getDepartment() != null ? user.getDepartment().getName() : null
         );
+    }
+
+    // ========================
+    // MAPPING DEPARTMENT -> RESPONSE DTO
+    // ========================
+    private DepartmentResponseDTO mapDepartmentToResponse(Department dept) {
+        return new DepartmentResponseDTO(
+                dept.getId(),
+                dept.getName(),
+                dept.getDescription(),
+                dept.getManager() != null ? dept.getManager().getId() : null,
+                dept.getManager() != null ? dept.getManager().getName() : null
+        );
+    }
+
+    // Helper to get raw Department for internal use
+    private Department getDepartmentByIdRaw(Long id) {
+        return departmentRepository.findById(id)
+            .orElseThrow(() -> new NotFoundException("Department not found"));
     }
 }

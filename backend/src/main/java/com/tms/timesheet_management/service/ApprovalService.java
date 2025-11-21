@@ -7,6 +7,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.tms.timesheet_management.dto.ApprovalDTO;
 import com.tms.timesheet_management.exception.BadRequestException;
 import com.tms.timesheet_management.exception.ForbiddenException;
 import com.tms.timesheet_management.exception.NotFoundException;
@@ -17,6 +18,27 @@ import com.tms.timesheet_management.repository.UserRepository;
 
 @Service
 public class ApprovalService {
+    public List<ApprovalDTO> getApprovalsForManager(Long managerId) {
+        var manager = userRepository.findById(managerId)
+            .orElseThrow(() -> new NotFoundException("Manager not found"));
+        List<Approval> approvals = approvalRepository.findByManager(manager);
+        return approvals.stream().map(a -> {
+            var ts = a.getTimesheet();
+            return new ApprovalDTO(
+                a.getId(),
+                ts.getId(),
+                managerId,
+                a.getStatus(),
+                a.getComments(),
+                a.getActionDate(),
+                ts.getUser() != null ? ts.getUser().getName() : null,
+                ts.getProject() != null ? ts.getProject().getName() : null,
+                ts.getHoursWorked(),
+                ts.getWorkDate() != null ? ts.getWorkDate().toString() : null,
+                a.getComments()
+            );
+        }).toList();
+    }
 
     @Autowired
     private ApprovalRepository approvalRepository;

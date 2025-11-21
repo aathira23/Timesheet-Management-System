@@ -27,16 +27,17 @@ public class AuthController {
     @Autowired
     private JwtUtil jwtUtil;
 
-    @PostMapping("/login")
-    public AuthResponse login(@RequestBody AuthRequest request) {
+        @PostMapping("/login")
+        public AuthResponse login(@RequestBody AuthRequest request) {
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+            new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
 
         User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+            .orElseThrow(() -> new RuntimeException("User not found"));
 
-        String token = jwtUtil.generateToken(user.getEmail(), user.getRole().getName());
+        String token = jwtUtil.generateToken(user.getEmail(), user.getRole().getName(), user.getId());
         return new AuthResponse(token);
-    }
+        }
 }
+

@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -30,6 +31,7 @@ public class TimesheetService {
     @Autowired private ProjectRepository projectRepository;
     @Autowired private ApprovalRepository approvalRepository;
     @Autowired private ProjectAssignmentRepository projectAssignmentRepository;
+    @Autowired private com.tms.timesheet_management.repository.DepartmentRepository departmentRepository;
 
     // GET METHODS
     public List<Timesheet> getAllTimesheets() { return timesheetRepository.findAll(); }
@@ -39,7 +41,11 @@ public class TimesheetService {
     // CREATE
     public Timesheet createTimesheet(Timesheet timesheet) {
         User user = validateUser(timesheet.getUser());
-        Project project = validateProject(timesheet.getProject());
+
+        Project project = null;
+        if (timesheet.getProject() != null && timesheet.getProject().getId() != null) {
+            project = validateProject(timesheet.getProject());
+        }
 
         // Validate that user has a manager (required for approval)
         if (user.getDepartment() == null || user.getDepartment().getManager() == null) {
@@ -49,7 +55,7 @@ public class TimesheetService {
         // Employee cannot set status; always PENDING
         timesheet.setApprovalStatus("PENDING");
         timesheet.setUser(user);
-        timesheet.setProject(project);
+        timesheet.setProject(project); // may be null for activity-only
 
         Timesheet saved = timesheetRepository.save(timesheet);
         syncApprovalWithTimesheet(saved); // create initial approval
@@ -78,6 +84,8 @@ public class TimesheetService {
 
         if (details.getWorkDate() != null) timesheet.setWorkDate(details.getWorkDate());
         if (details.getHoursWorked() != null) timesheet.setHoursWorked(details.getHoursWorked());
+        if (details.getDescription() != null) timesheet.setDescription(details.getDescription());
+        if (details.getActivityType() != null) timesheet.setActivityType(details.getActivityType());
 
         // Employees cannot change approval status
         timesheet.setApprovalStatus("PENDING");
@@ -197,6 +205,114 @@ public class TimesheetService {
             }
         }
         approvalRepository.save(approval);
+    }
+
+    // NEW METHODS FOR DASHBOARD
+    public User getUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new NotFoundException("User not found with email: " + email));
+    }
+
+    public List<Timesheet> getTimesheetsByUser(User user) {
+        return timesheetRepository.findByUser(user);
+    }
+
+    public com.tms.timesheet_management.dto.TimesheetStatsDTO getTimesheetStats(User user) {
+        List<Timesheet> allTimesheets = timesheetRepository.findByUser(user);
+        
+        LocalDate now = LocalDate.now();
+        LocalDate weekStart = now.minusDays(now.getDayOfWeek().getValue() - 1);
+        LocalDate monthStart = now.withDayOfMonth(1);
+
+        // Calculate weekly hours
+        Double weeklyHours = allTimesheets.stream()
+            .filter(t -> !t.getWorkDate().isBefore(weekStart) && !t.getWorkDate().isAfter(now))
+            .mapToDouble(t -> t.getHoursWorked() != null ? (double) t.getHoursWorked() : 0.0)
+            .sum();
+
+        // Calculate monthly hours
+        Double monthlyHours = allTimesheets.stream()
+            .filter(t -> !t.getWorkDate().isBefore(monthStart) && !t.getWorkDate().isAfter(now))
+            .mapToDouble(t -> t.getHoursWorked() != null ? (double) t.getHoursWorked() : 0.0)
+            .sum();
+
+        // Count by status
+        Integer pendingCount = (int) allTimesheets.stream()
+            .filter(t -> "PENDING".equalsIgnoreCase(t.getApprovalStatus()))
+            .count();
+
+        Integer approvedCount = (int) allTimesheets.stream()
+            .filter(t -> "APPROVED".equalsIgnoreCase(t.getApprovalStatus()))
+            .count();
+
+        Integer rejectedCount = (int) allTimesheets.stream()
+            .filter(t -> "REJECTED".equalsIgnoreCase(t.getApprovalStatus()))
+            .count();
+
+        return com.tms.timesheet_management.dto.TimesheetStatsDTO.builder()
+            .weeklyHours(weeklyHours)
+            .monthlyHours(monthlyHours)
+            .pendingCount(pendingCount)
+            .approvedCount(approvedCount)
+            .rejectedCount(rejectedCount)
+            .build();
+    }
+
+    public java.util.List<com.tms.timesheet_management.dto.ProjectSimpleDTO> getAssignedProjects(User user) {
+        List<Project> projects = projectRepository.findAll().stream()
+            .filter(p -> projectAssignmentRepository.existsByUserIdAndProjectId(user.getId(), p.getId()))
+            .collect(Collectors.toList());
+
+        return projects.stream()
+            .map(p -> com.tms.timesheet_management.dto.ProjectSimpleDTO.builder()
+                .id(p.getId())
+                .name(p.getName())
+                .description(p.getDescription())
+                .build())
+            .collect(Collectors.toList());
+    }
+
+    // Manager dashboard statistics
+    public com.tms.timesheet_management.dto.ManagerDashboardDTO getManagerDashboardStats(Long managerId) {
+
+        // Get manager
+        com.tms.timesheet_management.model.User manager = userRepository.findById(managerId)
+                .orElseThrow(() -> new NotFoundException("User with ID " + managerId + " not found"));
+
+        // Departments managed by this manager
+        List<com.tms.timesheet_management.model.Department> departments = departmentRepository.findByManager_Id(managerId);
+
+        // Count team members (employees in departments managed by this manager)
+        int teamCount = 0;
+        for (com.tms.timesheet_management.model.Department dept : departments) {
+            List<com.tms.timesheet_management.model.User> users = userRepository.findAllByDepartment_Id(dept.getId());
+            for (com.tms.timesheet_management.model.User u : users) {
+                if (u.getRole() != null && ("EMPLOYEE".equalsIgnoreCase(u.getRole().getName()) || "ROLE_EMPLOYEE".equalsIgnoreCase(u.getRole().getName()))) {
+                    teamCount++;
+                }
+            }
+        }
+
+        // Total projects count: only projects created by this manager in their department
+        com.tms.timesheet_management.model.Department managerDept = manager.getDepartment();
+        long projectsCount = projectRepository.findAll().stream()
+            .filter(p -> p.getDepartment() != null && p.getDepartment().getId().equals(managerDept.getId()))
+            .count();
+
+        // Approvals acted on by this manager (status != PENDING)
+        List<com.tms.timesheet_management.model.Approval> approvals = approvalRepository.findByManager(manager);
+        long approvalsActioned = (approvals != null) ? approvals.stream().filter(a -> a.getStatus() != null && !"PENDING".equalsIgnoreCase(a.getStatus())).count() : 0;
+
+        // Pending approvals for manager
+        List<com.tms.timesheet_management.model.Timesheet> pending = timesheetRepository.findPendingTimesheetsByManager(managerId);
+        long pendingApprovals = (pending != null) ? pending.size() : 0;
+
+        return com.tms.timesheet_management.dto.ManagerDashboardDTO.builder()
+                .teamCount(teamCount)
+                .projectsCount((int) projectsCount)
+                .approvalsActioned((int) approvalsActioned)
+                .pendingApprovals((int) pendingApprovals)
+                .build();
     }
 }
 

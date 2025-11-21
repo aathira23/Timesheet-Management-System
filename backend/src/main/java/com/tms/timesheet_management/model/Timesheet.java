@@ -36,12 +36,15 @@ public class Timesheet {
     @JsonIgnore
     private User user;
 
-    // Project worked on
-    @NotNull(message = "Project is required")
+    // Project worked on (optional for activity-only timesheets)
     @ManyToOne
-    @JoinColumn(name = "project_id", nullable = false)
+    @JoinColumn(name = "project_id", nullable = true)
     @JsonIgnore
     private Project project;
+
+    // If logging an internal activity (training, meeting, admin), store the activity type here
+    @Column(length = 100)
+    private String activityType; // e.g. "training", "meeting", "admin", "other"
 
     @NotNull(message = "Work date is required")
     @Column(nullable = false)
@@ -51,6 +54,9 @@ public class Timesheet {
     @Min(value = 0, message = "Hours worked must be at least 0")
     @Column(nullable = false)
     private Double hoursWorked;
+
+    @Column(length = 500)
+    private String description; // Optional notes about the work
 
     @NotNull(message = "Approval status is required")
     @Column(nullable = false)

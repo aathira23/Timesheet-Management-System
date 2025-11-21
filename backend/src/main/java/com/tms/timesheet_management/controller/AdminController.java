@@ -16,14 +16,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.tms.timesheet_management.dto.DepartmentAdminDTO;
+import com.tms.timesheet_management.dto.DepartmentResponseDTO;
 import com.tms.timesheet_management.dto.UserAdminDTO;
 import com.tms.timesheet_management.dto.UserResponseDTO;
-import com.tms.timesheet_management.model.Department;
 import com.tms.timesheet_management.service.AdminService;
 
 @RestController
 @RequestMapping("/admin")
-@PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
 
     @Autowired
@@ -35,13 +34,15 @@ public class AdminController {
 
     // Create a new user
     @PostMapping("/users")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserResponseDTO> createUser(@Validated @RequestBody UserAdminDTO dto) {
         UserResponseDTO createdUser = adminService.createUser(dto);
         return ResponseEntity.ok(createdUser);
     }
 
-    // Get all users
+    // Get all users (allowed for ADMIN and MANAGER)
     @GetMapping("/users")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<List<UserResponseDTO>> getAllUsers() {
         List<UserResponseDTO> users = adminService.getAllUsers();
         return ResponseEntity.ok(users);
@@ -49,6 +50,7 @@ public class AdminController {
 
     // Get single user by ID
     @GetMapping("/users/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<UserResponseDTO> getUserById(@PathVariable Long id) {
         UserResponseDTO user = adminService.getUserById(id);
         return ResponseEntity.ok(user);
@@ -56,6 +58,7 @@ public class AdminController {
 
     // Update user
     @PutMapping("/users/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserResponseDTO> updateUser(@PathVariable Long id,
                                                       @Validated @RequestBody UserAdminDTO dto) {
         UserResponseDTO updatedUser = adminService.updateUser(id, dto);
@@ -64,6 +67,7 @@ public class AdminController {
 
     // Delete user
     @DeleteMapping("/users/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
         adminService.deleteUser(id);
         return ResponseEntity.noContent().build();
@@ -75,35 +79,40 @@ public class AdminController {
 
     // Create a department
     @PostMapping("/departments")
-    public ResponseEntity<Department> createDepartment(@Validated @RequestBody DepartmentAdminDTO dto) {
-        Department dept = adminService.createDepartment(dto);
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<DepartmentResponseDTO> createDepartment(@Validated @RequestBody DepartmentAdminDTO dto) {
+        DepartmentResponseDTO dept = adminService.createDepartment(dto);
         return ResponseEntity.ok(dept);
     }
 
     // Get all departments
     @GetMapping("/departments")
-    public ResponseEntity<List<Department>> getAllDepartments() {
-        List<Department> departments = adminService.getAllDepartments();
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<DepartmentResponseDTO>> getAllDepartments() {
+        List<DepartmentResponseDTO> departments = adminService.getAllDepartments();
         return ResponseEntity.ok(departments);
     }
 
     // Get department by ID
     @GetMapping("/departments/{id}")
-    public ResponseEntity<Department> getDepartmentById(@PathVariable Long id) {
-        Department dept = adminService.getDepartmentById(id);
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<DepartmentResponseDTO> getDepartmentById(@PathVariable Long id) {
+        DepartmentResponseDTO dept = adminService.getDepartmentById(id);
         return ResponseEntity.ok(dept);
     }
 
     // Update department
     @PutMapping("/departments/{id}")
-    public ResponseEntity<Department> updateDepartment(@PathVariable Long id,
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<DepartmentResponseDTO> updateDepartment(@PathVariable Long id,
                                                        @Validated @RequestBody DepartmentAdminDTO dto) {
-        Department updatedDept = adminService.updateDepartment(id, dto);
+        DepartmentResponseDTO updatedDept = adminService.updateDepartment(id, dto);
         return ResponseEntity.ok(updatedDept);
     }
 
     // Delete department
     @DeleteMapping("/departments/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteDepartment(@PathVariable Long id) {
         adminService.deleteDepartment(id);
         return ResponseEntity.noContent().build();

@@ -19,6 +19,7 @@ import com.tms.timesheet_management.dto.ApiResponse;
 import com.tms.timesheet_management.dto.ProjectDTO;
 import com.tms.timesheet_management.dto.ProjectResponseDTO;
 import com.tms.timesheet_management.model.Project;
+import com.tms.timesheet_management.model.User;
 import com.tms.timesheet_management.service.ProjectService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -30,6 +31,29 @@ import jakarta.validation.Valid;
 @CrossOrigin(origins = "*")
 @Tag(name = "Projects", description = "Operations related to projects")
 public class ProjectController {
+        // ========================
+        // ASSIGN USERS TO PROJECT
+        // ========================
+        @PostMapping("/{id}/assign")
+        @PreAuthorize("hasRole('MANAGER')")
+        @Operation(summary = "Assign users to a project (Manager only)")
+        public ResponseEntity<ApiResponse<String>> assignUsersToProject(
+                @PathVariable Long id,
+                @RequestBody List<Long> userIds) {
+            projectService.assignUsersToProject(id, userIds);
+            return ResponseEntity.ok(new ApiResponse<>(true, "Users assigned successfully", null));
+        }
+    // ========================
+    // GET ASSIGNED USERS FOR PROJECT
+    // ========================
+    @GetMapping("/{id}/assigned-users")
+    @PreAuthorize("hasRole('MANAGER')")
+    @Operation(summary = "Get assigned users for a project")
+    public ResponseEntity<ApiResponse<List<User>>> getAssignedUsersForProject(@PathVariable Long id) {
+        Project project = projectService.getProjectById(id);
+        List<User> assigned = project.getAssignedUsers() == null ? List.of() : project.getAssignedUsers().stream().toList();
+        return ResponseEntity.ok(new ApiResponse<>(true, "Assigned users fetched successfully", assigned));
+    }
 
     @Autowired
     private ProjectService projectService;
@@ -69,6 +93,21 @@ public class ProjectController {
         ProjectResponseDTO response = projectService.toResponseDTO(project);
         return ResponseEntity.ok(new ApiResponse<>(true, "Project fetched successfully", response));
     }
+
+    // ========================
+    // GET PROJECTS FOR MANAGER
+    // ========================
+    @GetMapping("/manager/{managerId}")
+    @PreAuthorize("hasRole('MANAGER')")
+    @Operation(summary = "Get projects for a manager")
+    public ResponseEntity<ApiResponse<List<ProjectResponseDTO>>> getProjectsForManager(@PathVariable Long managerId) {
+        List<Project> projects = projectService.getProjectsByManager(managerId);
+        List<ProjectResponseDTO> responses = projects.stream()
+                .map(projectService::toResponseDTO)
+                .toList();
+        return ResponseEntity.ok(new ApiResponse<>(true, "Manager projects fetched successfully", responses));
+    }
+
 
     // ========================
     // UPDATE PROJECT

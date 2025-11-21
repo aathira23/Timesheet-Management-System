@@ -1,0 +1,40 @@
+.layout {
+  display: flex;
+  height: 100vh;
+  background: #eef4ff;;
+}
+
+/* Sidebar stays fixed */
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  position: fixed;     /* ensures sidebar doesn't move */
+  left: 0;
+  top: 0;
+  height: 100vh;
+}
+
+/* Main content - no margin by default */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Only add margin when sidebar is visible */
+.main-content.with-sidebar {
+  margin-left: 240px;
+}
+
+.header {
+  flex-shrink: 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.page-content {
+  flex: 1;
+  overflow-y: auto;
+  background: #f9fafb;
+  padding: 20px;        /* optional for nicer spacing */
+}

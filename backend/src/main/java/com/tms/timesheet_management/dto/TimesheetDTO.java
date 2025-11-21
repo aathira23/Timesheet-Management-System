@@ -9,14 +9,19 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+
 public class TimesheetDTO {
 
     private Long id;
     private Long userId;
+    private String userName; // <-- add this
     private Long projectId;
     private LocalDate workDate;
     private Double hoursWorked;
     private String approvalStatus;
+    private String projectName;
+    private String description;
+    private String activityType; // optional: "training", "meeting", etc.
 
     // Explicit Getters and Setters
 
@@ -66,5 +71,29 @@ public class TimesheetDTO {
 
     public void setApprovalStatus(String approvalStatus) {
         this.approvalStatus = approvalStatus;
+    }
+
+    public String getProjectName() {
+        return projectName;
+    }
+
+    public void setProjectName(String projectName) {
+        this.projectName = projectName;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getActivityType() {
+        return activityType;
+    }
+
+    public void setActivityType(String activityType) {
+        this.activityType = activityType;
     }
 }

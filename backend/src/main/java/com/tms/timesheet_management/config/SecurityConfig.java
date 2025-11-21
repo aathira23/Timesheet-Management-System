@@ -31,10 +31,18 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf(csrf -> csrf.disable())
+            .cors(cors -> cors.configurationSource(request -> {
+                var corsConfig = new org.springframework.web.cors.CorsConfiguration();
+                corsConfig.setAllowedOrigins(java.util.Arrays.asList("http://localhost:3000", "http://localhost:5173", "http://localhost:5174", "http://127.0.0.1:5173", "http://127.0.0.1:5174"));
+                corsConfig.setAllowedMethods(java.util.Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                corsConfig.setAllowedHeaders(java.util.Arrays.asList("*"));
+                corsConfig.setAllowCredentials(true);
+                return corsConfig;
+            }))
             .authorizeHttpRequests(auth -> auth
-                // Allow public access to login
+                // Public access to authentication endpoints
                 .requestMatchers("/auth/**").permitAll()
-                // Allow Swagger UI
+                // Swagger/OpenAPI
                 .requestMatchers(
                     "/v3/api-docs/**",
                     "/swagger-ui/**",
@@ -42,14 +50,13 @@ public class SecurityConfig {
                     "/swagger-resources/**",
                     "/webjars/**"
                 ).permitAll()
-                // Only ADMIN can access /admin/**
-                .requestMatchers("/admin/**").hasRole("ADMIN")
-                // All other endpoints require authentication
+                // All other endpoints require authentication (method-level security will handle role checks)
                 .anyRequest().authenticated()
             )
+            // Use stateless session (JWT only)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
-        // Add JWT filter before Spring Security's authentication filter
+        // Add JWT filter before UsernamePasswordAuthenticationFilter
         http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

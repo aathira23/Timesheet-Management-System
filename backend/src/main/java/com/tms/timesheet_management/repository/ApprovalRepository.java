@@ -16,4 +16,6 @@ public interface ApprovalRepository extends JpaRepository<Approval, Long> {
     List<Approval> findByTimesheet_ProjectId(Long projectId);
     List<Approval> findByTimesheet_User(User employee);
     List<Approval> findByStatus(String status);
+    int countByManagerIdAndStatus(Long managerId, String status);
+
 }

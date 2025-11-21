@@ -22,10 +22,11 @@ public class JwtUtil {
     private final Key key = Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
     private final long EXPIRATION_TIME = 1000 * 60 * 60 * 10; // 10 hours
 
-    // Generate JWT token with email and role
-    public String generateToken(String email, String role) {
+    // Generate JWT token with email, role, and userId
+    public String generateToken(String email, String role, Long userId) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", role);
+        claims.put("userId", userId);
         return Jwts.builder()
                 .setClaims(claims)
                 .setSubject(email)

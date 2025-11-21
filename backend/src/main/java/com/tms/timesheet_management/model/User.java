@@ -62,4 +62,10 @@ public class User {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     @JsonIgnore
     private Department department;
+
+    // New manager relationship
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "manager_id")
+    @JsonIgnore
+    private User manager;
 }

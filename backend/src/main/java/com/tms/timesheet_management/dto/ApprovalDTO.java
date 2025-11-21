@@ -16,4 +16,10 @@ public class ApprovalDTO {
     private String status;
     private String comments;
     private LocalDateTime actionDate;
+    // For frontend display
+    private String employeeName;
+    private String projectName;
+    private Double hoursLogged;
+    private String submittedDate;
+    private String remarks;
 }

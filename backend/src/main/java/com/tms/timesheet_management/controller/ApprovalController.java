@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.tms.timesheet_management.dto.ApiResponse;
+import com.tms.timesheet_management.dto.ApprovalDTO;
 import com.tms.timesheet_management.model.Approval;
 import com.tms.timesheet_management.service.ApprovalService;
 
@@ -25,6 +26,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @CrossOrigin(origins = "*")
 @Tag(name = "Approvals", description = "Operations related to approvals")
 public class ApprovalController {
+    @GetMapping("/manager/{managerId}")
+    @PreAuthorize("hasRole('MANAGER')")
+    @Operation(summary = "Get approvals for a specific manager")
+    public ResponseEntity<ApiResponse<List<ApprovalDTO>>> getApprovalsForManager(@PathVariable Long managerId) {
+        List<ApprovalDTO> approvals = approvalService.getApprovalsForManager(managerId);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Approvals for manager fetched successfully", approvals));
+    }
 
     @Autowired
     private ApprovalService approvalService;

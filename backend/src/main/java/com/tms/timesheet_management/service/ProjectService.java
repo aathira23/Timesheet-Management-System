@@ -19,6 +19,20 @@ import com.tms.timesheet_management.repository.UserRepository;
 
 @Service
 public class ProjectService {
+    // ========================
+    // Assign users to a project (ManyToMany)
+    // ========================
+    public void assignUsersToProject(Long projectId, List<Long> userIds) {
+        Project project = getProjectById(projectId);
+        List<User> users = userRepository.findAllById(userIds);
+        if (users.isEmpty()) {
+            throw new BadRequestException("No valid users found for assignment");
+        }
+        // Assign users to project (no duplicates)
+        project.getAssignedUsers().clear();
+        project.getAssignedUsers().addAll(users);
+        projectRepository.save(project);
+    }
 
     @Autowired
     private ProjectRepository projectRepository;
@@ -61,6 +75,7 @@ public class ProjectService {
         project.setEndDate(dto.getEndDate());
         project.setStatus(dto.getStatus() != null ? dto.getStatus() : "ACTIVE");
         project.setDepartment(dept);
+        project.setManager(manager); // <-- Set manager field
 
         return projectRepository.save(project);
     }
@@ -79,6 +94,29 @@ public class ProjectService {
         return projectRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Project with ID " + id + " not found"));
     }
+
+    // ========================
+// Get projects by manager
+// ========================
+public List<Project> getProjectsByManager(Long managerId) {
+    User manager = userRepository.findById(managerId)
+            .orElseThrow(() -> new NotFoundException("Manager not found"));
+
+    if (manager.getRole() == null || !"ROLE_MANAGER".equals(manager.getRole().getName())) {
+        throw new BadRequestException("User is not a manager");
+    }
+
+    if (manager.getDepartment() == null) {
+        throw new BadRequestException("Manager does not have an assigned department");
+    }
+
+    // Fetch projects in the manager's department
+    return projectRepository.findAll().stream()
+            .filter(p -> p.getDepartment() != null &&
+                         p.getDepartment().getId().equals(manager.getDepartment().getId()))
+            .toList();
+}
+
 
     // ========================
     // Update Project
